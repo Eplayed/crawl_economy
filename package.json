@@ -5,7 +5,8 @@
     "start": "node auto_browser/crawl_economy.js"
   },
   "dependencies": {
-    "puppeteer": "^24.33.0",
-    "ali-oss": "^6.23.0"
+    "ali-oss": "^6.23.0",
+    "dotenv": "^17.2.3",
+    "puppeteer": "^24.33.0"
   }
 }
