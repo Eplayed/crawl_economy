@@ -1,0 +1,38 @@
+name: Update PoE2 Economy
+
+on:
+  schedule:
+    # 北京时间每天 4:00, 10:00, 16:00, 22:00 运行 (UTC 时间)
+    # 0 20 * * * = 北京时间 04:00
+    - cron: '0 20,2,8,14 * * *'
+  workflow_dispatch: # 允许手动点击按钮触发
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Crawler & Upload
+        env:
+          # 告诉脚本这是 CI 环境
+          CI: true
+          # 告诉 upload_to_oss.js 你的 OSS 密钥
+          OSS_REGION: oss-cn-hangzhou
+          OSS_BUCKET: ${{ secrets.OSS_BUCKET }}
+          OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
+          OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+          # 生产环境配置
+          NODE_ENV: production
+        run: node auto_browser/crawl_economy.js

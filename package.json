@@ -1,0 +1,11 @@
+{
+  "name": "poe2-economy-crawler",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node auto_browser/crawl_economy.js"
+  },
+  "dependencies": {
+    "puppeteer": "^24.33.0",
+    "ali-oss": "^6.23.0"
+  }
+}
