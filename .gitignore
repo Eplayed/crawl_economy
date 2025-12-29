@@ -1,0 +1,27 @@
+
+node_modules
+.DS_Store
+dist
+translated-data
+.npmrc
+.cache
+
+# Build and Release Folders
+bin-debug/
+bin-release/
+[Oo]bj/
+[Bb]in/
+
+# Other files and folders
+.settings/
+
+# Executables
+*.swf
+*.air
+*.ipa
+*.apk
+
+
+
+oss-config.json
+auto_browser/.env
