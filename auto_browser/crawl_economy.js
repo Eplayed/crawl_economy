@@ -93,7 +93,7 @@ function formatIdToName(id) {
     .join(" ");
 }
 
-function translateCurrency(enName) {
+function translateCurrency(rawId) {
   // 1. 尝试直接匹配 ID
   if (MANUAL_DICT[rawId]) return MANUAL_DICT[rawId];
 
