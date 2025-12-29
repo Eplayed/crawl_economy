@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const uploadAll = require("./upload_to_oss");
 // const envConfig = require("./env-config");
-const config = require('./config'); 
+const config = require("./config");
 
 // --- 0. 配置 ---
 const TARGET_URL = "https://poe.ninja/poe2/economy/vaal/currency";
@@ -55,7 +55,7 @@ try {
   }
 } catch (e) {}
 
-// 手动补充汉化
+// 手动补充翻译 (针对 PoE2 新通货)
 const MANUAL_DICT = {
   "Divine Orb": "神圣石",
   "Mirror of Kalandra": "卡兰德的魔镜",
@@ -70,16 +70,44 @@ const MANUAL_DICT = {
   "Glassblower's Bauble": "玻璃弹珠",
   "Orb of Transmutation": "蜕变石",
   "Orb of Augmentation": "增幅石",
-  "Orb of Alteration": "改造石",
-  "Orb of Scouring": "重铸石",
   "Armourer's Scrap": "护甲片",
   "Blacksmith's Whetstone": "磨刀石",
   "Artificer's Orb": "工匠石",
-  "Scroll of Wisdom": "鉴定卷轴",
+  "Perfect Chaos Orb": "完美混沌石",
+  "Perfect Exalted Orb": "完美崇高石",
+  "Perfect Jeweller's Orb": "完美工匠石",
+  "Hinekora's Lock": "辛格拉的发丝",
+  "Fracturing Orb": "破裂石",
+  "Vaal Cultivation Orb": "瓦尔培养石", // 或者是瓦尔相关新通货
+  "Vaal Infuser": "瓦尔灌注器",
+  "Ancient Infuser": "远古灌注器",
+  "Architect's Orb": "建筑师之石",
+  "Core Destabiliser": "核心去稳器",
 };
+// 辅助：将 kebab-case 转为 Title Case (hinekoras-lock -> Hinekoras Lock)
+function formatIdToName(id) {
+  if (!id) return "";
+  return id
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 
 function translateCurrency(enName) {
-  return MANUAL_DICT[enName] || dictionary[enName] || enName;
+  // 1. 尝试直接匹配 ID
+  if (MANUAL_DICT[rawId]) return MANUAL_DICT[rawId];
+
+  // 2. 格式化后再匹配 (perfect-chaos-orb -> Perfect Chaos Orb)
+  const formattedName = formatIdToName(rawId);
+
+  // 3. 查手动字典
+  if (MANUAL_DICT[formattedName]) return MANUAL_DICT[formattedName];
+
+  // 4. 查基础字典
+  if (dictionary[formattedName]) return dictionary[formattedName];
+
+  // 5. 兜底返回格式化后的英文名
+  return formattedName;
 }
 
 // 辅助：首字母大写 (用于处理 ID_MAP 里没有的漏网之鱼)
@@ -159,19 +187,22 @@ async function runEconomyTask() {
 
     // --- 4. 数据清洗 (适配新结构) ---
     const rates = capturedData.map((item) => {
-      const rawId = item.id; // e.g. "alch"
+      const rawId = item.id || item.currencyTypeName; // e.g. "alch"
       // 1. 还原全名: "alch" -> "Orb of Alchemy"
-      const enName = ID_MAP[rawId] || capitalize(rawId);
+      // const enName = ID_MAP[rawId] || capitalize(rawId);
 
       // 2. 获取价格和涨跌
-      const price = item.primaryValue;
+      const price = item.primaryValue || item.chaosEquivalent || 0;
       const change = item.sparkline ? item.sparkline.totalChange : 0;
 
       return {
-        name: translateCurrency(enName), // 翻译成中文
-        enName: enName, // 英文全名 (用于前端匹配图标)
-        price: parseFloat(price.toFixed(2)), // 保留2位小数
+        id: rawId,
+        name: translateCurrency(rawId),
+        enName: formatIdToName(rawId),
+        price: parseFloat(price.toFixed(1)),
         change: parseFloat(change.toFixed(1)),
+        // 构造一个 icon 字段给前端用
+        iconName: rawId.replace(/-/g, "_"), // perfect-chaos-orb -> perfect_chaos_orb
       };
     });
 
