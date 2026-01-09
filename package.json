@@ -1,8 +1,12 @@
 {
-  "name": "poe2-economy-crawler",
+  "name": "poe2-economy-news-crawler",
   "version": "1.0.0",
   "scripts": {
-    "start": "node auto_browser/crawl_economy.js"
+    "start": "node auto_browser/crawl_economy.js",
+    "crawl:economy": "node auto_browser/crawl_economy.js",
+    "crawl:news": "node auto_browser/crawl_news.js",
+    "crawl:news:detail": "node auto_browser/crawl_news_detail.js",
+    "crawl:news:all": "node auto_browser/crawl_news_with_details.js"
   },
   "dependencies": {
     "ali-oss": "^6.23.0",
