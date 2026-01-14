@@ -1,0 +1,26 @@
+name: D4 Timer Scraper
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # 每30分钟一次
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  scrape-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      
+      - name: Install Dependencies
+        run: npm install puppeteer ali-oss
+
+      - name: Run Scraper
+        env:
+          OSS_KEY_ID: ${{ secrets.OSS_KEY_ID }}
+          OSS_KEY_SECRET: ${{ secrets.OSS_KEY_SECRET }}
+          # 其他环境变量
+        run: node crawl_d4.js
