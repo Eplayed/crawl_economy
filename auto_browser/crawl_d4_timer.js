@@ -5,198 +5,180 @@ const path = require("path");
 const uploadAll = require("./upload_to_oss");
 
 // --- 1. 配置 ---
-// 目标地址 (d2core 首页或 D4 专题页)
 const TARGET_URL = "https://www.d2core.com/"; 
 const OUTPUT_FILE = "d4_events.json";
 const OUTPUT_DIR = "./data";
 
-// 确保输出目录存在
 if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
 async function runD4Task() {
-  console.log("🔥 [D4 助手] 启动 S11 计时器抓取...");
-  
-  // 代理配置 (可选，参考 crawl_news.js)
-  const USE_PROXY = process.env.USE_PROXY === "true";
-  const LOCAL_PROXY = "http://127.0.0.1:7890";
-
-  // 启动参数与仿真设备
-  const launchArgs = [
-    "--no-sandbox",
-    "--disable-setuid-sandbox",
-    "--disable-dev-shm-usage",
-    "--disable-blink-features=AutomationControlled",
-    "--window-size=375,812"
-  ];
-  if (USE_PROXY) {
-    console.log(`   🌐 使用本地代理: ${LOCAL_PROXY}`);
-    launchArgs.push(`--proxy-server=${LOCAL_PROXY}`);
-  }
+  console.log("🔥 [D4 助手] 启动 S11 计时器抓取 (DOM 修正版)...");
 
   // 启动浏览器 (模拟 iPhone X)
   const browser = await puppeteer.launch({
     headless: process.env.CI ? "new" : false,
-    args: launchArgs,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--window-size=375,812"
+    ],
     defaultViewport: { width: 375, height: 812, isMobile: true, hasTouch: true }
   });
 
   try {
     const page = await browser.newPage();
     
-    // 设置 UserAgent，防止被识别为爬虫，同时请求移动端页面
+    // 伪装 UserAgent
     await page.setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1");
-    // 隐藏 webdriver 标识，规避简单反爬
-    await page.evaluateOnNewDocument(() => {
-      Object.defineProperty(navigator, "webdriver", { get: () => false });
-    });
-    // 放宽默认等待时间，避免某些长连接导致超时
-    page.setDefaultNavigationTimeout(120000);
-    page.setDefaultTimeout(30000);
 
     console.log(`   🔗 访问: ${TARGET_URL}`);
     
-    // 访问页面，使用 domcontentloaded，避免 networkidle0 长连接导致的超时
+    // 访问页面
     try {
-      await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 90000 });
-    } catch (navErr) {
-      console.warn("⚠️ 首次导航等待超时，尝试使用较宽松策略重试...");
-      await page.goto(TARGET_URL, { waitUntil: "networkidle2", timeout: 90000 });
-    }
-
-    // 根据截图，核心卡片的类名是 .season-count-content
-    // 等待该元素出现，最多等 15 秒
-    try {
-        await page.waitForFunction(() => {
-          return document.querySelectorAll(".season-count-content").length > 0;
-        }, { timeout: 30000 });
+      // 增加超时时间，d2core 有时加载慢
+      await page.goto(TARGET_URL, { waitUntil: "networkidle2", timeout: 60000 });
     } catch (e) {
-        throw new Error("❌ 页面加载超时或结构已变，未找到 .season-count-content");
+      console.warn("⚠️ 页面加载较慢，尝试继续解析...");
     }
 
-    // --- 2. 核心 DOM 提取 ---
+    // --- 关键修正：等待具体的子元素加载 ---
+    // 截图显示数据在 .season-count-content 下的 .count-text 里
+    try {
+        await page.waitForSelector(".season-count-content .count-text", { timeout: 30000 });
+        // 额外等待 2 秒，确保 vue 数据渲染完毕
+        await new Promise(r => setTimeout(r, 2000));
+    } catch (e) {
+        throw new Error("❌ 未找到倒计时元素，页面结构可能已变");
+    }
+
+    // --- 2. 核心 DOM 提取 (根据截图修复) ---
     console.log("   👀 正在提取页面数据...");
     const rawData = await page.evaluate(() => {
       const items = [];
-      // 获取所有计时卡片
-      const cards = document.querySelectorAll(".season-count-content");
+      
+      // 修正点：直接选择所有的 .count-text 块
+      // 截图层级：.season-count-content (父) -> .count-text (子，有多个)
+      const cards = document.querySelectorAll(".season-count-content .count-text");
 
-      cards.forEach(card => {
-        // 提取标题: 截图中的 "徘徊死魔", "本轮地狱狂潮剩余时间"
-        // 路径: .count-text -> .count-text-row (取第一个非空的)
-        const titleEl = card.querySelector(".count-text .count-text-row");
-        let rawTitle = titleEl ? titleEl.innerText.trim() : "";
-        
-        // 提取时间: 截图中的 "2026-01-14 17:30:00"
-        // 路径: .tip
+      cards.forEach((card, index) => {
+        // 1. 提取标题
+        // 路径: 当前 .count-text -> .count-text-row
+        const titleEl = card.querySelector(".count-text-row");
+        // 2. 提取时间
+        // 路径: 当前 .count-text -> .tip
         const timeEl = card.querySelector(".tip");
-        let timeStr = timeEl ? timeEl.innerText.trim() : "";
 
-        // 有些布局可能不同，简单校验
-        if (rawTitle && timeStr) {
-            items.push({ rawTitle, timeStr });
+        if (titleEl && timeEl) {
+            const rawTitle = titleEl.innerText.trim();
+            const timeStr = timeEl.innerText.trim();
+            
+            // 简单过滤无效数据
+            if (rawTitle && timeStr.includes("-")) {
+                items.push({ rawTitle, timeStr });
+            }
         }
       });
       return items;
     });
 
     if (rawData.length === 0) {
-        throw new Error("❌ 未抓取到任何事件数据，请检查选择器");
+        throw new Error("❌ 解析结果为空，请检查选择器");
     }
 
-    console.log(`   ⚡️ 原始抓取: ${rawData.length} 条数据`);
+    console.log(`   ⚡️ 成功提取: ${rawData.length} 条数据`);
+    // 打印预览，方便调试
+    rawData.forEach(item => console.log(`      Found: [${item.rawTitle}] -> ${item.timeStr}`));
 
-    // --- 3. 数据清洗与格式化 (适配小程序) ---
+    // --- 3. 数据清洗 ---
     const cleanData = processData(rawData);
 
-    // --- 4. 保存与上传 ---
+    // --- 4. 保存 ---
     const savePath = path.join(OUTPUT_DIR, OUTPUT_FILE);
     fs.writeFileSync(savePath, JSON.stringify(cleanData, null, 2));
     console.log(`   ✅ 本地保存成功: ${savePath}`);
 
-    // 如果作为主模块运行，则执行上传
+    // 上传 OSS
     if (require.main === module) {
-      console.log("   🚀 准备上传至 OSS...");
-      // 这里调用你之前的 upload_to_oss 脚本
+      console.log("   🚀 上传至 OSS...");
       await uploadAll();
     }
 
   } catch (e) {
     console.error("❌ 任务失败:", e.message);
-    process.exit(1); // 报错退出，让 GitHub Actions 知道失败了
+    process.exit(1);
   } finally {
     await browser.close();
   }
 }
 
-// --- 🛠 数据处理逻辑 (核心算法) ---
+// --- 🛠 数据处理逻辑 (匹配截图中的中文) ---
 function processData(rawItems) {
     const result = {
         updateTime: Date.now(),
-        // 采用数组结构，方便前端 v-for 渲染 S11 新事件
         events: [] 
     };
 
     rawItems.forEach(item => {
-        const title = item.rawTitle; // e.g., "本轮地狱狂潮剩余时间"
-        const timeStr = item.timeStr; // e.g., "2026-01-14 17:30:00"
+        const title = item.rawTitle; 
+        const timeStr = item.timeStr; 
 
-        // 1. 解析时间 (强制北京时间 UTC+8)
-        // timeStr 格式通常是 YYYY-MM-DD HH:mm:ss
-        // 加上 "+08:00" 让 Date 对象知道这是中国时间
+        // 强制解析为北京时间 UTC+8
         const targetTimestamp = new Date(timeStr.replace(" ", "T") + "+08:00").getTime();
 
-        // 2. 识别事件类型
         let type = "unknown";
-        let status = "pending"; // pending=等待开始, active=进行中
+        let status = "pending"; 
         let label = "距离开始";
-        let zone = ""; // 区域名
+        let zone = ""; 
 
-        // --- 地狱狂潮逻辑 ---
+        // --- 逻辑适配截图中的文字 ---
+        
+        // 1. 地狱狂潮
         if (title.includes("地狱狂潮")) {
             type = "helltide";
-            // 判断状态：截图里有 "剩余时间" 字样代表进行中
+            // 截图示例: "本轮地狱狂潮剩余时间" -> Active
             if (title.includes("剩余")) {
                 status = "active";
                 label = "剩余时间";
             } else {
+                // 截图示例: "距离下轮地狱狂潮开始" -> Pending
                 status = "pending";
                 label = "距离开始";
             }
-            
-            // 尝试提取区域名 (如果 d2core 写在标题里)
-            // 比如 "地狱狂潮(干燥平原)"
-            // 如果没写，前端可以根据 hour % 5 的算法自己算，或者显示“未知区域”
-            const zoneMatch = title.match(/[\(（](.*?)[\)）]/) || title.match(/-(\S+)/);
-            if (zoneMatch) zone = zoneMatch[1];
         }
-        // --- 军团事件逻辑 ---
+        // 2. 军团
         else if (title.includes("军团")) {
             type = "legion";
             label = "距离开始";
         }
-        // --- 世界BOSS逻辑 (包含常见名字) ---
-        else if (["BOSS", "阿煞巴", "贪魔", "死魔", "咒金兽"].some(k => title.includes(k))) {
+        // 3. Boss (截图示例: "疫王"阿煞巴)
+        else if (
+            title.includes("阿煞巴") || 
+            title.includes("贪魔") || 
+            title.includes("死魔") || 
+            title.includes("咒金兽") || 
+            title.includes("BOSS")
+        ) {
             type = "boss";
             label = "距离降临";
         }
-        // --- S11 赛季专属 (兜底逻辑) ---
         else {
-            type = "season_event"; // 标记为赛季事件
+            type = "season_event";
             label = "倒计时";
         }
 
         result.events.push({
-            type,       // helltide, boss, legion, season_event
-            name: title, // 显示的标题
-            zone,       // 区域 (如果有)
-            status,     // active / pending
-            label,      // 前端显示的文案
+            type,       
+            name: title,
+            zone,       
+            status,     
+            label,      
             targetTime: targetTimestamp,
             rawTimeStr: timeStr
         });
     });
 
-    // 排序优化：把正在进行(active)的放前面，然后按时间排序
+    // 排序：进行中 -> Boss -> 其他
     result.events.sort((a, b) => {
         if (a.status === 'active' && b.status !== 'active') return -1;
         if (b.status === 'active' && a.status !== 'active') return 1;
