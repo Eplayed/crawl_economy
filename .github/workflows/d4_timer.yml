@@ -30,4 +30,4 @@ jobs:
           NODE_ENV: production
           # 可选代理或其他环境变量
           # USE_PROXY: "true"
-        run: node auto_browser/crawl_d4_timer.js
+        run: node crawl_d4_timer.js
