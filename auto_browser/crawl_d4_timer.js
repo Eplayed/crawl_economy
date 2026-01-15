@@ -31,6 +31,28 @@ async function runD4Task() {
     
     // 伪装 UserAgent
     await page.setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1");
+    
+    // --- 关键：设置时区为北京时间 ---
+    // 很多倒计时库会依赖本地时间进行计算，如果 Puppeteer 默认是 UTC，可能导致计算出的时间偏差
+    await page.emulateTimezone('Asia/Shanghai');
+
+    // --- 监听网络响应 (尝试直接获取 API 数据) ---
+    let apiData = null;
+    page.on('response', async response => {
+        const url = response.url();
+        // 猜测 API 可能包含 timer, event, season 等关键词
+        if (url.includes('/api/') && (url.includes('timer') || url.includes('event'))) {
+            try {
+                const json = await response.json();
+                // 简单判断结构
+                if (json && (json.data || Array.isArray(json))) {
+                    console.log(`   🕵️ 捕获到疑似 API: ${url}`);
+                    // 这里暂存，后续分析
+                    // apiData = json; 
+                }
+            } catch (e) {}
+        }
+    });
 
     console.log(`   🔗 访问: ${TARGET_URL}`);
     
@@ -46,8 +68,15 @@ async function runD4Task() {
     // 截图显示数据在 .season-count-content 下的 .count-text 里
     try {
         await page.waitForSelector(".season-count-content .count-text", { timeout: 30000 });
-        // 额外等待 2 秒，确保 vue 数据渲染完毕
-        await new Promise(r => setTimeout(r, 2000));
+        
+        // 模拟滚动，触发可能的懒加载或 JS 激活
+        await page.evaluate(() => {
+            window.scrollTo(0, document.body.scrollHeight / 2);
+        });
+
+        // 额外等待 5 秒，确保 vue 数据水合完成并计算出正确时间
+        console.log("   ⏳ 等待数据渲染 (5s)...");
+        await new Promise(r => setTimeout(r, 5000));
     } catch (e) {
         throw new Error("❌ 未找到倒计时元素，页面结构可能已变");
     }
@@ -151,7 +180,7 @@ function processData(rawItems) {
             type = "legion";
             label = "距离开始";
         }
-        // 3. Boss (截图示例: "疫王"阿煞巴)
+        // 3. Boss (截图示例: "疫王"阿煞巴, 徘徊死魔)
         else if (
             title.includes("阿煞巴") || 
             title.includes("贪魔") || 
