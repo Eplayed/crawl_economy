@@ -16,10 +16,27 @@ if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 async function runD4Task() {
   console.log("🔥 [D4 助手] 启动 S11 计时器抓取...");
   
+  // 代理配置 (可选，参考 crawl_news.js)
+  const USE_PROXY = process.env.USE_PROXY === "true";
+  const LOCAL_PROXY = "http://127.0.0.1:7890";
+
+  // 启动参数与仿真设备
+  const launchArgs = [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-blink-features=AutomationControlled",
+    "--window-size=375,812"
+  ];
+  if (USE_PROXY) {
+    console.log(`   🌐 使用本地代理: ${LOCAL_PROXY}`);
+    launchArgs.push(`--proxy-server=${LOCAL_PROXY}`);
+  }
+
   // 启动浏览器 (模拟 iPhone X)
   const browser = await puppeteer.launch({
-    headless: "new",
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    headless: process.env.CI ? "new" : false,
+    args: launchArgs,
     defaultViewport: { width: 375, height: 812, isMobile: true, hasTouch: true }
   });
 
@@ -28,16 +45,30 @@ async function runD4Task() {
     
     // 设置 UserAgent，防止被识别为爬虫，同时请求移动端页面
     await page.setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1");
+    // 隐藏 webdriver 标识，规避简单反爬
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => false });
+    });
+    // 放宽默认等待时间，避免某些长连接导致超时
+    page.setDefaultNavigationTimeout(120000);
+    page.setDefaultTimeout(30000);
 
     console.log(`   🔗 访问: ${TARGET_URL}`);
     
-    // 访问页面，等待网络空闲 (确保 uni-app 数据加载完毕)
-    await page.goto(TARGET_URL, { waitUntil: "networkidle0", timeout: 60000 });
+    // 访问页面，使用 domcontentloaded，避免 networkidle0 长连接导致的超时
+    try {
+      await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 90000 });
+    } catch (navErr) {
+      console.warn("⚠️ 首次导航等待超时，尝试使用较宽松策略重试...");
+      await page.goto(TARGET_URL, { waitUntil: "networkidle2", timeout: 90000 });
+    }
 
     // 根据截图，核心卡片的类名是 .season-count-content
     // 等待该元素出现，最多等 15 秒
     try {
-        await page.waitForSelector(".season-count-content", { timeout: 15000 });
+        await page.waitForFunction(() => {
+          return document.querySelectorAll(".season-count-content").length > 0;
+        }, { timeout: 30000 });
     } catch (e) {
         throw new Error("❌ 页面加载超时或结构已变，未找到 .season-count-content");
     }

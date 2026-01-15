@@ -1,0 +1,14 @@
+{
+  "updateTime": 1768440158233,
+  "events": [
+    {
+      "type": "boss",
+      "name": "\"疫王\"阿煞巴",
+      "zone": "",
+      "status": "pending",
+      "label": "距离降临",
+      "targetTime": 1768446000000,
+      "rawTimeStr": "2026-01-15 11:00:00"
+    }
+  ]
+}
