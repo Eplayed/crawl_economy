@@ -1,78 +1,84 @@
 // index.js
-const axios = require('axios');
 require('dotenv').config();
 
-// 1. 提示词生成器
-function generatePrompt(layout) {
-    const layoutStr = layout.map(r => 
-        `位置:${r.pos}, 房间名:${r.name}, 等级:${r.level}, 已连接位置:[${r.connections || ''}]`
-    ).join('\n');
+async function getTempleAIPlan(layout) {
+    console.log("📡 正在准备请求数据...");
+    const layoutStr = layout.map(r =>
+        `位置:${r.pos}, 房间名:${r.name}, 等级:${r.level}, 连通:${r.connected ? '是' : '否'}`
+    ).join(' | ');
 
-    return `
-你是一名《流放之路2》（PoE2）资深大神，精通阿兹瓦特神庙（Temple of Atzoatl）的最大化收益规划。
-现在神庙中有以下房间布局：
-${layoutStr}
+    const prompt = `
+        你是一个PoE2专家系统。
+        这是玩家当前神庙的【真实布局数据】：
+        ${layoutStr}
 
-请根据 PoE2 的当前行情和机制（如：3级腐化房、3级宝石房、3级通货房价值最高），给出最优规划方案。
-你的目标是：
-1. 确定哪3个房间最值得通过剩余次数升级到 3 级。
-2. 给出为了连接这些高价值房间，最优先需要打通的房间位置（ID）。
+        任务：
+        1. 只能基于我提供的位置 ID 进行分析。不要虚构数据中不存在的位置。
+        2. 如果数据中某个位置是"空房间"，请不要将其误认为其他房间。
+        3. 结合知识库，给出最优规划。
 
-请直接返回 JSON 格式结果，不要包含任何额外文字说明。格式如下：
-{
-  "recommend_rooms": [位置ID1, 位置ID2],
-  "target_upgrades": ["房间名A", "房间名B"],
-  "reason": "简短的中文逻辑分析，解释为什么这么选",
-  "path_suggestion": "关于如何连接房间门的具体建议"
-}
-`;
-}
-
-// 2. 调用 AI 接口
-async function getAIPlan(layout) {
-    const apiKey = process.env.AI_API_KEY;
-    const apiUrl = process.env.AI_API_URL || 'https://api.deepseek.com/v1/chat/completions';
+        返回 JSON 格式：
+        {
+        "recommend_rooms": [这里只能填数据中出现的 pos ID],
+        "target_upgrades": ["建议升级的房间名"],
+        "reason": "简短的中文逻辑分析"
+        }
+        `;
+    const url = `https://dashscope.aliyuncs.com/api/v1/apps/${process.env.APP_ID}/completion`;
 
     try {
-        const response = await axios.post(apiUrl, {
-            model: "deepseek-chat",
-            messages: [
-                { role: "system", content: "你是一个专业的 PoE2 游戏助手 JSON 格式化输出引擎。" },
-                { role: "user", content: generatePrompt(layout) }
-            ],
-            response_format: { type: 'json_object' }
-        }, {
+        console.log("📤 正在发送请求到阿里云百炼 (DeepSeek-R1)...");
+        console.log("⏳ R1 正在思考和检索知识库，请耐心等待 (可能需要 20-40 秒)...");
+
+        const startTime = Date.now();
+        const response = await fetch(url, {
+            method: 'POST',
             headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            }
+                'Authorization': `Bearer ${process.env.API_KEY}`,
+                'Content-Type': 'application/json',
+                'X-DashScope-SSE': 'disable'
+            },
+            body: JSON.stringify({
+                input: { prompt: prompt },
+                parameters: { incremental_output: false }
+            })
         });
 
-        return JSON.parse(response.data.choices[0].message.content);
+        const data = await response.json();
+        const duration = (Date.now() - startTime) / 1000;
+        console.log(`📥 收到响应！耗时: ${duration}s`);
+
+        if (!response.ok) throw new Error(data.message || 'API 调用失败');
+
+        let rawText = data.output.text;
+
+        // 打印原始返回，看看 R1 说了什么（包含 think 内容）
+        console.log("📝 原始输出预览:", rawText.substring(0, 100) + "...");
+
+        const cleanText = rawText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+
+        if (jsonMatch) {
+            console.log("✅ JSON 解析成功");
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        throw new Error("AI 未返回有效的规划 JSON");
+
     } catch (error) {
-        console.error('AI API 调用失败:', error.message);
+        console.error('❌ DeepSeek-R1 调用异常:', error.message);
         throw error;
     }
 }
 
-// 适配阿里云函数计算 FC 3.0
-exports.handler = async (event, context) => {
-    // 处理 HTTP 请求体
-    const body = JSON.parse(event.toString());
-    const { layout } = body;
-
-    if (!layout || !Array.isArray(layout)) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ error: "无效的布局数据" })
-        };
-    }
-
+// FC 3.0 Handler
+exports.handler = async (event) => {
     try {
-        const plan = await getAIPlan(layout);
+        const body = JSON.parse(event.toString());
+        const plan = await getTempleAIPlan(body.layout);
         return {
             statusCode: 200,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ success: true, plan })
         };
     } catch (err) {
@@ -83,16 +89,11 @@ exports.handler = async (event, context) => {
     }
 };
 
-// --- 本地测试逻辑 ---
+// 本地测试
 if (require.main === module) {
     const testLayout = [
-        { pos: 1, name: "腐化祭坛", level: 1, connections: "2,5" },
-        { pos: 2, name: "宝石工匠工坊", level: 2, connections: "1" },
-        { pos: 5, name: "空房间", level: 0, connections: "1" }
+        { pos: 1, name: "腐化房间", level: 1, connected: true },
+        { pos: 10, name: "宝石房间", level: 2, connected: false }
     ];
-    
-    console.log("正在进行本地测试...");
-    getAIPlan(testLayout).then(res => {
-        console.log("AI 返回方案:", JSON.stringify(res, null, 2));
-    }).catch(err => console.error("测试失败"));
+    getTempleAIPlan(testLayout).then(res => console.log("✅ 结果:", res));
 }
