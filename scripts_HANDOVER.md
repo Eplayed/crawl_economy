@@ -360,3 +360,4 @@ USE_PROXY=true
    
    - 所有脚本都有较详细的 console 日志。
    - GitHub Actions 失败时，可以直接在 Actions 页面查看某次 workflow run 的 Logs，定位是网络问题、选择器问题还是 OSS 认证问题。
+   - disable
