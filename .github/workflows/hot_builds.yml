@@ -1,0 +1,37 @@
+name: 更新热门BD
+
+on:
+  schedule:
+    # 每周一北京时间 9:00 (UTC 1:00)
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+
+jobs:
+  crawl-hot-builds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        working-directory: auto_browser
+        
+      - name: Run crawler
+        run: node crawl_hot_builds.js
+        working-directory: auto_browser
+        env:
+          OSS_REGION: ${{ secrets.OSS_REGION }}
+          OSS_BUCKET: ${{ secrets.OSS_BUCKET }}
+          OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
+          OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+          CI: true
+          NODE_ENV: production
