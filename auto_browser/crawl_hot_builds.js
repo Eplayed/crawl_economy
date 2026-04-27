@@ -51,15 +51,15 @@ async function crawlHotBuilds() {
     });
     
     console.log('✅ 页面加载完成，等待Vue渲染...');
-    
-    // 等待页面完全渲染
-    await page.waitForTimeout(5000);
-    
+
+    // 等待页面完全渲染 (新版Puppeteer用Promise替代waitForTimeout)
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
     // 滚动页面加载更多数据
     console.log('📜 滚动页面加载数据...');
     for (let i = 0; i < 5; i++) {
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-      await page.waitForTimeout(2000);
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
     
     // 尝试多种方式获取数据
