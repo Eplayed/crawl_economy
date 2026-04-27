@@ -161,18 +161,37 @@ async function crawlHotBuilds() {
     
     console.log(`📊 获取到 ${bdData.length} 条BD数据`);
     
-    // 构建最终数据
-    const result = {
-      updateTime: new Date().toISOString(),
-      source: 'caimogu',
-      sourceUrl: TARGET_URL,
-      count: bdData.length,
-      data: bdData
-    };
+    // 转换为 community.json 格式
+    const communityData = bdData.map((bd, index) => ({
+      id: `CaiMoGu_${Date.now()}_${index}`,
+      meta: {
+        title: bd.name,
+        author: bd.author,
+        class: 'Druid', // 默认职业，爬虫数据中没有职业信息
+        name: '德鲁伊',
+        tags: bd.tags && bd.tags.length > 0 ? bd.tags : ['热门推荐']
+      },
+      intro: {
+        desc: `来自踩蘑菇网的热门BD ${bd.name}，作者 ${bd.author}，更新于 ${bd.updateTime}`,
+        pros: ['社区热门推荐', '经过玩家验证'],
+        cons: ['具体效果因人而异']
+      },
+      skills: [],
+      equipment: {
+        notes: `数据来源：踩蘑菇网 | 更新时间: ${bd.updateTime} | 收藏:${bd.favorites} 点赞:${bd.likes}`
+      },
+      source: {
+        updateTime: bd.updateTime,
+        platform: 'caimogu',
+        originalAuthor: bd.author,
+        favorites: bd.favorites,
+        likes: bd.likes
+      }
+    }));
     
     // 保存数据
-    const outputPath = path.join(config.dataDir, 'hot_builds.json');
-    fs.writeFileSync(outputPath, JSON.stringify(result, null, 2), 'utf8');
+    const outputPath = path.join(config.dataDir, 'community.json');
+    fs.writeFileSync(outputPath, JSON.stringify(communityData, null, 2), 'utf8');
     console.log(`💾 数据已保存到: ${outputPath}`);
     
     // 输出预览
@@ -190,7 +209,7 @@ async function crawlHotBuilds() {
       console.warn('⚠️ OSS上传失败:', e.message);
     }
     
-    return result;
+    return communityData;
     
   } catch (error) {
     console.error('❌ 爬取失败:', error);

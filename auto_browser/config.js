@@ -28,7 +28,7 @@ module.exports = {
     },
 
     // OSS 上传路径前缀
-    ossPath: 'poe2-economy/',  // 或 'poe2-all-class/economy/'
+    ossPath: 'poe2-ladders/miniprogram_data/',
 
     // 爬虫配置
     crawler: {
