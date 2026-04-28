@@ -1,0 +1,256 @@
+[
+  {
+    "id": "CaiMoGu_YbwEdfXm",
+    "meta": {
+      "title": "千万血法COC",
+      "author": "玩家02501124",
+      "class": "Druid",
+      "name": "末裔德鲁伊",
+      "tags": [
+        "热门推荐"
+      ]
+    },
+    "intro": {
+      "desc": "来自踩蘑菇网的热门BD「千万血法COC」，末裔德鲁伊职业，作者玩家02501124，更新于2026年03月10日",
+      "pros": [
+        "社区热门推荐",
+        "经过玩家验证"
+      ],
+      "cons": [
+        "具体效果因人而异"
+      ]
+    },
+    "skills": [
+      {
+        "groupName": "生命残片",
+        "groupIndex": 1,
+        "mainSkills": [
+          "生命残片",
+          "和谐残迹 II"
+        ],
+        "supportSkills": [],
+        "links": [
+          {
+            "name": "生命残片",
+            "isSupport": false
+          },
+          {
+            "name": "和谐残迹 II",
+            "isSupport": false
+          }
+        ]
+      },
+      {
+        "groupName": "残片效能 I",
+        "groupIndex": 2,
+        "mainSkills": [
+          "无边能量 II",
+          "活动炸弹",
+          "仲裁官的点燃"
+        ],
+        "supportSkills": [
+          "残片效能 I",
+          "法术节魔",
+          "高效 II"
+        ],
+        "links": [
+          {
+            "name": "残片效能 I",
+            "isSupport": true
+          },
+          {
+            "name": "法术节魔",
+            "isSupport": true
+          },
+          {
+            "name": "无边能量 II",
+            "isSupport": false
+          },
+          {
+            "name": "活动炸弹",
+            "isSupport": false
+          },
+          {
+            "name": "仲裁官的点燃",
+            "isSupport": false
+          },
+          {
+            "name": "高效 II",
+            "isSupport": true
+          }
+        ]
+      },
+      {
+        "groupName": "魔力残片",
+        "groupIndex": 3,
+        "mainSkills": [
+          "魔力残片",
+          "和谐残迹 II"
+        ],
+        "supportSkills": [],
+        "links": [
+          {
+            "name": "魔力残片",
+            "isSupport": false
+          },
+          {
+            "name": "和谐残迹 II",
+            "isSupport": false
+          }
+        ]
+      },
+      {
+        "groupName": "残片效能 I",
+        "groupIndex": 4,
+        "mainSkills": [],
+        "supportSkills": [
+          "残片效能 I"
+        ],
+        "links": [
+          {
+            "name": "残片效能 I",
+            "isSupport": true
+          }
+        ]
+      },
+      {
+        "groupName": "大法师",
+        "groupIndex": 5,
+        "mainSkills": [
+          "大法师"
+        ],
+        "supportSkills": [],
+        "links": [
+          {
+            "name": "大法师",
+            "isSupport": false
+          }
+        ]
+      },
+      {
+        "groupName": "闪电专精",
+        "groupIndex": 6,
+        "mainSkills": [
+          "闪电专精"
+        ],
+        "supportSkills": [],
+        "links": [
+          {
+            "name": "闪电专精",
+            "isSupport": false
+          }
+        ]
+      },
+      {
+        "groupName": "暴击时施放",
+        "groupIndex": 7,
+        "mainSkills": [],
+        "supportSkills": [
+          "暴击时施放"
+        ],
+        "links": [
+          {
+            "name": "暴击时施放",
+            "isSupport": true
+          }
+        ]
+      },
+      {
+        "groupName": "彗星落",
+        "groupIndex": 8,
+        "mainSkills": [
+          "彗星落",
+          "达拉的渴望"
+        ],
+        "supportSkills": [
+          "范围集中",
+          "天顶 II",
+          "元素集中"
+        ],
+        "links": [
+          {
+            "name": "彗星落",
+            "isSupport": false
+          },
+          {
+            "name": "范围集中",
+            "isSupport": true
+          },
+          {
+            "name": "天顶 II",
+            "isSupport": true
+          },
+          {
+            "name": "元素集中",
+            "isSupport": true
+          },
+          {
+            "name": "达拉的渴望",
+            "isSupport": false
+          }
+        ]
+      },
+      {
+        "groupName": "元素异常状态时施放",
+        "groupIndex": 9,
+        "mainSkills": [],
+        "supportSkills": [
+          "元素异常状态时施放"
+        ],
+        "links": [
+          {
+            "name": "元素异常状态时施放",
+            "isSupport": true
+          }
+        ]
+      },
+      {
+        "groupName": "彗星落",
+        "groupIndex": 10,
+        "mainSkills": [
+          "彗星落",
+          "无边能量 II"
+        ],
+        "supportSkills": [
+          "天顶 II",
+          "多重范围施法",
+          "能量保存"
+        ],
+        "links": [
+          {
+            "name": "彗星落",
+            "isSupport": false
+          },
+          {
+            "name": "天顶 II",
+            "isSupport": true
+          },
+          {
+            "name": "多重范围施法",
+            "isSupport": true
+          },
+          {
+            "name": "能量保存",
+            "isSupport": true
+          },
+          {
+            "name": "无边能量 II",
+            "isSupport": false
+          }
+        ]
+      }
+    ],
+    "equipment": {
+      "notes": "数据来源：踩蘑菇网 | 更新时间: 2026年03月10日"
+    },
+    "passive_tree": {
+      "link": "https://poe2.caimogu.cc/planner#/plan/YbwEdfXm"
+    },
+    "source": {
+      "platform": "caimogu",
+      "originalAuthor": "玩家02501124",
+      "updateTime": "2026年03月10日",
+      "sourceUrl": "https://poe2.caimogu.cc/planner#/plan/YbwEdfXm"
+    }
+  }
+]
